@@ -1,0 +1,32 @@
+{
+  "name": "bitcoin-transaction-merger",
+  "version": "0.0.1",
+  "description": "Deamon that connects to bitcoin wallet and merge the input transaction into bigger once",
+  "keywords": [
+    "bitcoin",
+    "fee",
+    "optimize",
+    "merger",
+    "transaction"
+  ],
+  "author": "Anton Avramov",
+  "license": "MIT",
+  "dependencies": {
+    "bitcoin" : ">=2.3.0",
+    "bitcoin-math" : "0.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lukavia/bitcoin-transaction-merger"
+  },
+  "main": "app.js",
+  "engines": {
+    "node": ">= 0.10.0"
+  },
+  "bugs": {
+    "url": "https://github.com/lukavia/bitcoin-transaction-merger/issues",
+    "email": "lukav@lukav.com"
+  },
+  "readmeFilename": "README.md",
+  "homepage": "https://github.com/lukavia/bitcoin-transaction-merger"
+}
