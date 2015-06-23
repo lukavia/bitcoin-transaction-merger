@@ -29,4 +29,5 @@ cp config-sample.js config.js
 
 # Donations
 If you like this app and want to say thanks use:
+
 BTC: 1886zXxHGSzkG1X2Uc2nX5sTXPuY7ghKx5
