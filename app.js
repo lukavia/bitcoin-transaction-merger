@@ -27,36 +27,55 @@ function mergeTransactions(){
           threshold = minPriority;
         }
         while (unspend.length > 2){
-          output = {};
+          var output = {};
           output[HubAddress] = 0;
-          trx = findTransaction(unspend,output);
+          var trx = findTransaction(unspend,output);
           if (trx) {
-            client.createRawTransaction(trx,output,function(err,rawTransaction){
-              if (err) return console.log(err);
-              client.decodeRawTransaction(rawTransaction,function(err,transaction){
+            if(config.passPhrase){
+              client.walletPassphrase(config.passPhrase,1,function(err){
                 if (err) return console.log(err);
-                  console.log('Will send txid: '+transaction.txid);
-                  console.log('  with total amount of '+transaction.vout[0].value+' to address '+HubAddress);
-                  console.log('  rawTransaction: '+rawTransaction);
-                if (config.dryRun){
-                  console.log('  dry run nothing is send');
-                } else {
-                  client.signRawTransaction(rawTransaction,function(err,signedTransaction){
+                processTransaction(this.trx,this.output,function(){
+                  client.walletLock(function(err){
                     if (err) return console.log(err);
-                    client.sendRawTransaction(signedTransaction.hex,function(err){
-                      if (err) return console.log(err);
-                      console.log('Send txid: '+transaction.txid);
-                    });
                   });
-                }
-              });
-            });
+                });
+              }.bind({trx:trx,output:output}));
+            } else {
+              processTransaction(trx,output);
+            }
           }
         }
       });
     }
   });
 }
+
+function processTransaction(trx,output,callback){
+  console.log(trx);
+  client.createRawTransaction(trx,output,function(err,rawTransaction){
+    if (err) return console.log(err);
+    client.decodeRawTransaction(rawTransaction,function(err,transaction){
+      if (err) return console.log(err);
+        console.log('Will send txid: '+transaction.txid);
+        console.log('  with total amount of '+transaction.vout[0].value+' to address '+HubAddress);
+        console.log('  rawTransaction: '+rawTransaction);
+      if (config.dryRun){
+        console.log('  dry run nothing is send');
+      } else {
+        client.signRawTransaction(rawTransaction,function(err,signedTransaction){
+          if (err) return console.log(err);
+          client.sendRawTransaction(signedTransaction.hex,function(err){
+            if (err) return console.log(err);
+            console.log('Send txid: '+transaction.txid);
+            if(callback){
+              callback();
+            }
+          });
+        });
+      }
+    });
+  });
+};
 
 function findTransaction(inputs,output){
   var priority = 0;

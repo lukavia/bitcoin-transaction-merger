@@ -10,5 +10,6 @@ config.client = {
 config.daemon = false;
 config.dryRun = true;
 config.address = '';
+config.passPhrase = '';
 
 module.exports = config;
