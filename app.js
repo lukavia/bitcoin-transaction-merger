@@ -12,7 +12,7 @@ var HubAddress = config.address;
 //});
 function mergeTransactions(){
   console.log((new Date()).toString());
-  client.listUnspent(0,function(err, unspend, resHeaders) {
+  client.listUnspent(1,function(err, unspend, resHeaders) {
     if (err) return console.log(err);
     unspend.sort(function(a,b){return b.amount.toSatoshi() * b.confirmations - a.amount.toSatoshi() * a.confirmations});
     //unspend.sort(function(a,b){return b.amount.toSatoshi() - a.amount.toSatoshi()});
