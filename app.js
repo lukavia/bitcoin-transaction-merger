@@ -82,11 +82,14 @@ function findTransaction(inputs,output){
   var i = 0;
   var res = [];
   while (i<6 && priority/(((2)*34)+10) < treshold && inputs.length){// (2) Should be outputs+1
-    priority = priority + inputs[0].amount.toSatoshi() * (inputs[0].confirmations+1);
-    output[HubAddress] = output[HubAddress] + inputs[0].amount.toSatoshi();
-    res.push({txid:inputs[0].txid,vout:inputs[0].vout});
-    i++;
-    input = inputs.shift();
+    var input = inputs[0];
+    if (input.spendable) { // filter watch-only wallet transactions
+      priority = priority + input.amount.toSatoshi() * (input.confirmations+1);
+      output[HubAddress] = output[HubAddress] + input.amount.toSatoshi();
+      res.push({txid:input.txid,vout:input.vout});
+      i++;
+    }
+    inputs.shift();
   }
   if (i == 6){
     console.log('No transactions with minimum priority found');
@@ -94,9 +97,11 @@ function findTransaction(inputs,output){
   }
   while (i<6 && inputs.length){
     input = inputs.pop();
-    output[HubAddress] = output[HubAddress] + input.amount.toSatoshi();
-    res.push({txid:input.txid,vout:input.vout});
-    i++;
+    if (input.spendable) { // filter watch-only wallet transactions
+      output[HubAddress] = output[HubAddress] + input.amount.toSatoshi();
+      res.push({txid:input.txid,vout:input.vout});
+      i++;
+    }
   }
   if (i < 6){
     console.log('Not enought unspend transactions');
