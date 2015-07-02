@@ -24,7 +24,9 @@ function mergeTransactions(){
       client.estimatePriority(25,function(err,minPriority){
         if (err) return console.log(err);
         if (minPriority > 0){
-          threshold = minPriority;
+          treshold = minPriority;
+        } else {
+          treshold = AllowFreeThreshold;
         }
         while (unspend.length > 2){
           var output = {};
@@ -51,7 +53,6 @@ function mergeTransactions(){
 }
 
 function processTransaction(trx,output,callback){
-  console.log(trx);
   client.createRawTransaction(trx,output,function(err,rawTransaction){
     if (err) return console.log(err);
     client.decodeRawTransaction(rawTransaction,function(err,transaction){
@@ -91,7 +92,7 @@ function findTransaction(inputs,output){
     }
     inputs.shift();
   }
-  if (i == 6){
+  if (i == 7){
     console.log('No transactions with minimum priority found');
     return false;
   }
