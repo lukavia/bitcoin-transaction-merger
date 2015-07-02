@@ -3,7 +3,7 @@ require('bitcoin-math');
 var bitcoin = require('bitcoin');
 var AllowFreeThreshold = 57600000; // COIN * 144 / 250
 var config = require('./config');
-var treshold = AllowFreeThreshold;
+var threshold = AllowFreeThreshold;
 var client = new bitcoin.Client(config.client);
 var HubAddress = config.address;
 
@@ -24,9 +24,9 @@ function mergeTransactions(){
       client.estimatePriority(25,function(err,minPriority){
         if (err) return console.log(err);
         if (minPriority > 0){
-          treshold = minPriority;
+          threshold = minPriority;
         } else {
-          treshold = AllowFreeThreshold;
+          threshold = AllowFreeThreshold;
         }
         while (unspend.length > 2){
           var output = {};
@@ -82,7 +82,7 @@ function findTransaction(inputs,output){
   var priority = 0;
   var i = 0;
   var res = [];
-  while (i<6 && priority/(((2)*34)+10) < treshold && inputs.length){// (2) Should be outputs+1
+  while (i<6 && priority/(((2)*34)+10) < threshold && inputs.length){// (2) Should be outputs+1
     var input = inputs[0];
     if (input.spendable) { // filter watch-only wallet transactions
       priority = priority + input.amount.toSatoshi() * (input.confirmations+1);
