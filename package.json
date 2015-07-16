@@ -13,7 +13,8 @@
   "license": "MIT",
   "dependencies": {
     "bitcoin" : ">=2.3.0",
-    "bitcoin-math" : "0.2.0"
+    "bitcoin-math" : ">=0.2.0",
+    "bitcoinjs-lib" : ">=1.5.7"
   },
   "repository": {
     "type": "git",
