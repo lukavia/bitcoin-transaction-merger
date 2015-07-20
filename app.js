@@ -128,7 +128,7 @@ function findTransaction(inputs,output){
       output[HubAddress] = output[HubAddress] + input.amount.toSatoshi();
       res.push({txid:input.txid,vout:input.vout});
       i++;
-      console.log(nBytes,input.amount,nQuantityUncompressed,threshold,dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)));
+      //console.log(nBytes,input.amount,nQuantityUncompressed,threshold,dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)));
     }
   }
   
@@ -138,7 +138,7 @@ function findTransaction(inputs,output){
     addTx();
     inputs.shift();
   } while (nBytes<1024 && dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)) < threshold && inputs.length);
-  console.log('----');
+  //console.log('----');
   if (nBytes > 1024){
     console.log('Transaction too large');
     return false;
@@ -153,12 +153,12 @@ function findTransaction(inputs,output){
       inputs.unshift(input);
     }
   }
-  console.log('=====');
+  //console.log('=====');
   if(dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)) < threshold){
     console.log('Not enought priority');
     return false;
   }
-  if (i < 5){
+  if (nBytes < 1024 - 180){ // Max bytes - 1 uncompressed
     console.log('Not enought unspend transactions');
     return false;
   }
