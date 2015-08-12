@@ -111,7 +111,7 @@ function findTransaction(inputs,output){
   var res = [];
 
   function calcTx(){
-    if (input.spendable) { // filter watch-only wallet transactions
+    if (input.spendable && input.amount < config.targetAmount) { // filter watch-only wallet transactions
       var addr = getAddresFromScriptPubKey(input.scriptPubKey);
       dPriorityInputs = dPriorityInputs + input.amount.toSatoshi() * (input.confirmations+1);
       if (Addresses[addr] && !Addresses[addr].iscompressed){
@@ -121,10 +121,11 @@ function findTransaction(inputs,output){
         nBytesInputs += 148;
       }
       nBytes = nBytesInputs + ((1 * 34) + 10);
+      //console.log(nBytes,dPriorityInputs,input);
     }
   }
   function addTx(){
-    if (input.spendable) { // filter watch-only wallet transactions
+    if (input.spendable && input.amount < config.targetAmount) { // filter watch-only wallet transactions
       output[HubAddress] = output[HubAddress] + input.amount.toSatoshi();
       res.push({txid:input.txid,vout:input.vout});
       i++;
@@ -137,7 +138,10 @@ function findTransaction(inputs,output){
     calcTx();
     addTx();
     inputs.shift();
-  } while (nBytes<1024 && dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)) < threshold && inputs.length);
+  } while (nBytes<1024 &&
+    ( dPriorityInputs == (nBytes - nBytesInputs + (nQuantityUncompressed*29)) ||
+      dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)) < threshold)
+    && inputs.length);
   //console.log('----');
   if (nBytes > 1024){
     console.log('Transaction too large');

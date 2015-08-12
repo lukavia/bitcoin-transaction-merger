@@ -11,5 +11,6 @@ config.daemon = false;
 config.dryRun = true;
 config.address = '';
 config.passPhrase = '';
+config.targetAmount = 1; // in BTC
 
 module.exports = config;
