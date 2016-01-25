@@ -12,16 +12,25 @@ var Addresses = {};
 //client.walletPassphrase('',5,function(err,wallet){
 //  if (err) return console.log(err);
 //});
+
+function debug(val,level){
+  if (config.Debug && level <= config.Debug){
+    console.log(val);
+  }
+}
+
 function getAddresFromScriptPubKey(scriptPubKey){
-  return blib.Address.fromOutputScript(blib.Script.fromHex(scriptPubKey),blib.networks.bitcoin).toString();
+  return blib.address.fromOutputScript(new Buffer(scriptPubKey, 'hex'),blib.networks.bitcoin).toString();
 }
 
 function getAddressInfo(tx){
   var addr = getAddresFromScriptPubKey(tx.scriptPubKey);
-  if (!Addresses[addr] && tx.spendable){
+  if (!Addresses[addr] && (tx.spendable || config.useUnspendable)){
     client.validateAddress(addr,function(err,data){
       if (err) return console.log(err);
+      debug('validateAddress: ' + addr,6);
       Addresses[addr] = data;
+      debug(data,7);
     });
   }
 }
@@ -32,8 +41,8 @@ function mergeTransactions(){
     if (err) return console.log(err);
     unspend.sort(function(a,b){
       // send unspandble to the end
-      if(!a.spendable) return 1;
-      if(!b.spendable) return -1;
+      if(!config.useUnspendable && !a.spendable) return 1;
+      if(!config.useUnspendable && !b.spendable) return -1;
       // this is a hack to get all the addresses info
       getAddressInfo(a);
       getAddressInfo(b);
@@ -52,6 +61,7 @@ function mergeTransactions(){
         } else {
           threshold = AllowFreeThreshold;
         }
+	debug('Set treshold to: ' + threshold,1);
         while (unspend.length > 4){
           var output = {};
           output[HubAddress] = 0;
@@ -77,8 +87,16 @@ function mergeTransactions(){
 }
 
 function processTransaction(trx,output,callback){
-  client.createRawTransaction(trx,output,function(err,rawTransaction){
-    if (err) return console.log(err);
+  var tx = new blib.TransactionBuilder();
+  for (f in trx ) {
+    tx.addInput(trx[f].txid,trx[f].vout);
+  }
+  for (o in output) {
+    tx.addOutput(o,output[o].toSatoshi());
+  }
+  var rawTransaction = tx.buildIncomplete().toHex();
+  //client.createRawTransaction(trx,output,function(err,rawTransaction){
+    //if (err) return console.log(err);
     client.decodeRawTransaction(rawTransaction,function(err,transaction){
       if (err) return console.log(err);
         console.log('Will send txid: '+transaction.txid);
@@ -99,7 +117,7 @@ function processTransaction(trx,output,callback){
         });
       }
     });
-  });
+  //});
 };
 
 function findTransaction(inputs,output){
@@ -111,7 +129,7 @@ function findTransaction(inputs,output){
   var res = [];
 
   function calcTx(){
-    if (input.spendable && input.amount < config.targetAmount) { // filter watch-only wallet transactions
+    if ((input.spendable || config.useUnspendable) && input.amount < config.targetAmount) { // filter watch-only wallet transactions
       var addr = getAddresFromScriptPubKey(input.scriptPubKey);
       dPriorityInputs = dPriorityInputs + input.amount.toSatoshi() * (input.confirmations+1);
       if (Addresses[addr] && !Addresses[addr].iscompressed){
@@ -121,23 +139,27 @@ function findTransaction(inputs,output){
         nBytesInputs += 148;
       }
       nBytes = nBytesInputs + ((1 * 34) + 10);
-      //console.log(nBytes,dPriorityInputs,input);
+      debug({input:{seq:cnt,nBytes:nBytes,dPriorityInputs:dPriorityInputs}},2);
     }
   }
   function addTx(){
-    if (input.spendable && input.amount < config.targetAmount) { // filter watch-only wallet transactions
+    debug({addTx:{amount:input.amount}},4);
+    if ((input.spendable || config.useUnspendable) && input.amount < config.targetAmount) { // filter watch-only wallet transactions
       output[HubAddress] = output[HubAddress] + input.amount.toSatoshi();
       res.push({txid:input.txid,vout:input.vout});
       i++;
+      debug({output:{seq:i,txid:input.txid,vout:input.vout,amount:output[HubAddress]}},2);
       //console.log(nBytes,input.amount,nQuantityUncompressed,threshold,dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)));
     }
   }
   
   do {
+    var cnt = 0;
     var input = inputs[0];
     calcTx();
     addTx();
     inputs.shift();
+    cnt++;
   } while (nBytes<1024 &&
     ( dPriorityInputs == (nBytes - nBytesInputs + (nQuantityUncompressed*29)) ||
       dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)) < threshold)
@@ -153,7 +175,7 @@ function findTransaction(inputs,output){
     calcTx();
     if (nBytes<1024){
       addTx();
-    } else if(inputs.length && input.spendable){ //Return last transaction for next pass
+    } else if(inputs.length && (input.spendable || config.useUnspendable)){ //Return last transaction for next pass
       inputs.unshift(input);
     }
   }
