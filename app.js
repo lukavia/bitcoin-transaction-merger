@@ -7,8 +7,11 @@ var config = require('./config');
 var threshold = AllowFreeThreshold;
 var client = new bitcoin.Client(config.client);
 var HubAddress = config.address;
+var HubAccount = config.account;
 var Addresses = {};
-
+var Queue = {};
+Queue.Addresses = [];
+Queue.Batch = [];
 //client.walletPassphrase('',5,function(err,wallet){
 //  if (err) return console.log(err);
 //});
@@ -21,6 +24,14 @@ function debug(val,level){
 
 function getAddresFromScriptPubKey(scriptPubKey){
   return blib.address.fromOutputScript(new Buffer(scriptPubKey, 'hex'),blib.networks.bitcoin).toString();
+}
+
+function AddressAddToQueue(tx){
+  var addr = getAddresFromScriptPubKey(tx.scriptPubKey);
+  if (!Addresses[addr] && Queue.Addresses.indexOf(addr) < 0) {
+    Queue.Addresses.push(addr);
+    Queue.Batch.push({method:'validateaddress',params: [addr] });
+  }
 }
 
 function getAddressInfo(tx){
@@ -44,8 +55,10 @@ function mergeTransactions(){
       if(!config.useUnspendable && !a.spendable) return 1;
       if(!config.useUnspendable && !b.spendable) return -1;
       // this is a hack to get all the addresses info
-      getAddressInfo(a);
-      getAddressInfo(b);
+      AddressAddToQueue(a);
+      AddressAddToQueue(b);
+      //getAddressInfo(a);
+      //getAddressInfo(b);
       // !compressed nInputSize = 29
       //double dPriority = ((double)out.tx->vout[out.i].nValue  / (nInputSize + 78)) * (out.nDepth+1); // 78 = 2 * 34 + 10
       return b.amount.toSatoshi() * b.confirmations - a.amount.toSatoshi() * a.confirmations;
@@ -62,9 +75,22 @@ function mergeTransactions(){
           threshold = AllowFreeThreshold;
         }
 	debug('Set treshold to: ' + threshold,1);
+
+        client.cmd(Queue.Batch, function(err, data, resHeaders) {
+          if (err) return console.log(err);
+          debug('validateAddress: ' + data.address,6);
+          Addresses[data.address] = data;
+          debug(data,7);
+          var _idx = Queue.Addresses.indexOf(data.address);
+	  if (_idx >= 0) {
+            Queue.Batch.splice(_idx,1);
+            Queue.Addresses.splice(_idx,1);
+          }
+        });
+
         while (unspend.length > 4){
           var output = {};
-          output[HubAddress] = 0;
+          output['HubAddress'] = 0;
           var trx = findTransaction(unspend,output);
           if (trx) {
             if(config.passPhrase){
@@ -91,10 +117,12 @@ function processTransaction(trx,output,callback){
   for (f in trx ) {
     tx.addInput(trx[f].txid,trx[f].vout);
   }
-  for (o in output) {
-    tx.addOutput(o,output[o].toSatoshi());
-  }
-  var rawTransaction = tx.buildIncomplete().toHex();
+  //for (o in output) {
+  //  tx.addOutput(o,output[o].toSatoshi());
+  //}
+  var _func = function () {
+    tx.addOutput(HubAddress,output['HubAddress'].toSatoshi());
+    var rawTransaction = tx.buildIncomplete().toHex();
   //client.createRawTransaction(trx,output,function(err,rawTransaction){
     //if (err) return console.log(err);
     client.decodeRawTransaction(rawTransaction,function(err,transaction){
@@ -118,6 +146,16 @@ function processTransaction(trx,output,callback){
       }
     });
   //});
+  }
+  if (config.account) {
+    client.getAccountAddress(config.account,function(err,address){
+      if (err) return console.log(err);
+      HubAddress = address;
+      _func();
+    });
+  } else {
+    _func();
+  }
 };
 
 function findTransaction(inputs,output){
@@ -145,10 +183,10 @@ function findTransaction(inputs,output){
   function addTx(){
     debug({addTx:{amount:input.amount}},4);
     if ((input.spendable || config.useUnspendable) && input.amount < config.targetAmount) { // filter watch-only wallet transactions
-      output[HubAddress] = output[HubAddress] + input.amount.toSatoshi();
+      output['HubAddress'] = output['HubAddress'] + input.amount.toSatoshi();
       res.push({txid:input.txid,vout:input.vout});
       i++;
-      debug({output:{seq:i,txid:input.txid,vout:input.vout,amount:output[HubAddress]}},2);
+      debug({output:{seq:i,txid:input.txid,vout:input.vout,amount:output['HubAddress']}},2);
       //console.log(nBytes,input.amount,nQuantityUncompressed,threshold,dPriorityInputs/(nBytes - nBytesInputs + (nQuantityUncompressed*29)));
     }
   }
@@ -188,11 +226,11 @@ function findTransaction(inputs,output){
     console.log('Not enought unspend transactions');
     return false;
   }
-  if (output[HubAddress] < 1000000){
+  if (output['HubAddress'] < 1000000){
     console.log('Not enought bitcoin amount');
     return false;
   }
-  output[HubAddress] = output[HubAddress].toBitcoin();
+  output['HubAddress'] = output['HubAddress'].toBitcoin();
   return res;
 }
 

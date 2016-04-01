@@ -9,6 +9,7 @@ config.client = {
 
 config.daemon = false;
 config.dryRun = true;
+config.account = 'MyHub';
 config.address = '';
 config.passPhrase = '';
 config.targetAmount = 1; // in BTC
